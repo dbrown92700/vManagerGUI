@@ -1,4 +1,4 @@
-#!/usr/bin/python38
+#!python
 """
 Copyright (c) 2012 Cisco and/or its affiliates.
 This software is licensed to you under the terms of the Cisco Sample
@@ -23,6 +23,12 @@ from includes import *
 from json2html import *
 import json
 from urllib import parse
+from vmanage_classes import Site
+from datetime import datetime
+import pandas as pd
+import plotly
+import plotly.express as px
+
 
 app = Flask(__name__)
 app.secret_key = 'any random string'
@@ -74,10 +80,26 @@ def menu():
     devices = vmanage.get_request('system/device/vedges')
     vmanage.logout()
     models = '<option label="all">all</option>\n'
+    sites_list = []
+    sites = ''
+    models_list = []
     for device in devices['data']:
-        if device['deviceModel'] not in models:
-            models += f'<option label="{device["deviceModel"]}">{device["deviceModel"]}</option>\n'
-    return render_template('menu.html', vmanage=request.cookies.get('vmanage'), models=Markup(models))
+        if device['deviceModel'] not in models_list:
+            models_list.append(device['deviceModel'])
+        try:
+            if device['site-id'] not in sites_list:
+                sites_list.append(device['site-id'])
+        except KeyError:
+            continue
+    models_list.sort()
+    sites_list.sort()
+    for model in models_list:
+        models += f'<option label="{model}">{model}</option>\n'
+    for site in sites_list:
+        sites += f'<option label="{site}">{site}</option>\n'
+
+    return render_template('menu.html', vmanage=request.cookies.get('vmanage'), models=Markup(models),
+                           sites=Markup(sites))
 
 
 ###########################################################################
@@ -327,6 +349,52 @@ def deployedge():
     return render_template('table.html', data=Markup(output), title='Pick a template',
                            instructions=Markup('Select the template to apply:<br><br>'))
 
+
+@app.route('/sitebandwidth')
+def sitebandwidth():
+    siteid = request.args.get('siteid')
+    vmanage = login()
+    site = Site(vmanage, siteid)
+    for edge in site.edges:
+        edge.get_wan_interfaces(vmanage)
+        edge.get_interface_stats(vmanage, interval=5)
+    vmanage.logout()
+
+    totals = {}
+    headers = ['Time', 'Total WAN Bandwidth']
+    for edge in site.edges:
+        for interface in edge.interfaces:
+            for stat in interface['stats']:
+                # timestamp = datetime.fromtimestamp(stat['entry_time']/1000)
+                timestamp = stat['entry_time']/1000
+                int_bandwidth = stat['rx_kbps'] + stat['tx_kbps']
+                if timestamp in totals.keys():
+                    totals[timestamp]['Total WAN Bandwidth'] += int_bandwidth
+                else:
+                    totals[timestamp] = {
+                        'Time': datetime.fromtimestamp(timestamp),
+                        'Total WAN Bandwidth': int_bandwidth
+                    }
+                interface_name = f'{edge.hostname}:{interface["interface"]}'
+                if interface_name + ' RX' not in headers:
+                    headers.append(f'{interface_name} RX')
+                    headers.append(f'{interface_name} TX')
+                totals[timestamp][f'{interface_name} RX'] = stat['rx_kbps']
+                totals[timestamp][f'{interface_name} TX'] = stat['tx_kbps']
+
+    totals = dict(sorted(totals.items()))
+    data = totals.values()
+
+    df = pd.DataFrame(data)
+    y_values = headers.copy()
+    y_values.remove('Time')
+    fig = px.line(df, x='Time', y=y_values)
+    table = Markup(df.to_html())
+
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+    header = "WAN Bandwidth"
+    description = 'WAN Bandwidth'
+    return render_template('bandwidth.html', graphJSON=graphJSON, header=header,description=description, table=table)
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
