@@ -28,6 +28,7 @@ from datetime import datetime
 import pandas as pd
 import plotly
 import plotly.express as px
+import csv
 
 
 app = Flask(__name__)
@@ -392,9 +393,46 @@ def sitebandwidth():
     table = Markup(df.to_html())
 
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-    header = "WAN Bandwidth"
     description = 'WAN Bandwidth'
-    return render_template('bandwidth.html', graphJSON=graphJSON, header=header,description=description, table=table)
+    return render_template('bandwidth.html', graphJSON=graphJSON, siteid=siteid, description=description, table=table)
+
+
+@app.route('/sitereport')
+def sitereport():
+
+    siteid = request.args.get('siteid')
+    vmanage = login()
+    site = Site(vmanage, siteid)
+    for edge in site.edges:
+        edge.get_wan_interfaces(vmanage)
+    vmanage.logout()
+    siteid = request.args.get('siteid')
+
+    edges_dict = {}
+    interfaces_tables = []
+    for edge_num, edge in enumerate(site.edges):
+        edges_dict.update({edge.hostname: {
+            'Model': edge.model,
+            'System IP': edge.sys_ip,
+            'Certificate': edge.validity,
+            'Reachability': edge.reachability,
+            'WAN Interfaces': f'table{edge_num}table'
+        }})
+        wan_interfaces = {}
+        for num, interface in enumerate(edge.interfaces):
+            wan_interfaces[f'WAN Interface {num + 1}'] = {f'Interface': interface['interface'],
+                                                          f'Color': interface['color'],
+                                                          f'Weight': interface['weight'],
+                                                          f'vManage Conns': interface['num-vmanages'],
+                                                          f'vSmart Conns': interface['num-vsmarts']
+                                                          }
+        interfaces_tables.append(pd.DataFrame(wan_interfaces).to_html())
+    edge_table = pd.DataFrame(data=edges_dict).to_html()
+    for num, table in enumerate(interfaces_tables):
+        edge_table = edge_table.replace(f'table{num}table', table)
+
+    return render_template('sitereport.html', siteid=siteid, edge_table=Markup(edge_table))
+
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
