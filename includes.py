@@ -107,7 +107,7 @@ def get_device_template_variables(vmanage, deviceId, templateId=None):
                 templateId = device['templateId']
                 break
     payload = {"templateId": f"{templateId}", "deviceIds": [f"{deviceId}"], "isEdited": "false",
-          "isMasterEdited": "false"}
+               "isMasterEdited": "false"}
     templateVariables = vmanage.post_request('template/device/config/input', payload)['data'][0]
     template = {
         "templateId": f"{templateId}",

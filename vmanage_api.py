@@ -78,6 +78,7 @@ class rest_api_lib:
 		payload = json.dumps(payload)
 		headers['X-XSRF-TOKEN']=self.token
 		response = self.session[self.vmanage_ip].post(url=url, data=payload, headers=headers, verify=False)
+		print(response)
 		data = json.loads(response.content)
 		return data
 

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="static/template_edit.css">
+</head>
+<body>
+
+<h2>Device Settings</h2>
+<ul>
+    <li>Enter settings for each variable below</li>
+    <li>Mouse hover over the description for more details</li>
+</ul>
+<a href="/edittemplate?templateId={{template_id}}">Edit this template Categories and Descriptions</a><br>
+<a href="/menu">Return to main menu</a><br><br>
+{{not_editable}}
+<p>Settings:</p>
+<form action="/savesettings">
+{{editable}}
+	<br>
+  <input type="submit" value="Submit">
+</form>
+<script>
+var coll = document.getElementsByClassName("collapsible");
+var i;
+
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.maxHeight){
+      content.style.maxHeight = null;
+    } else {
+      content.style.maxHeight = content.scrollHeight + "px";
+    }
+  });
+}
+</script>
+
+</body>
+</html>

@@ -28,7 +28,7 @@ from datetime import datetime
 import pandas as pd
 import plotly
 import plotly.express as px
-import csv
+from sqldb import MyDb
 
 
 app = Flask(__name__)
@@ -78,6 +78,10 @@ def menu():
     # Problems logging into vManage should be caught here...
     except Exception as err:
         return render_template('error.html', err=err)
+    vmanage_device_ip = vmanage.get_request('messaging/device/vmanage')[0]['vmanages'][0]
+    org_id = vmanage.get_request(
+        f'device/control/synced/localproperties?deviceId={vmanage_device_ip}')['data'][0]['organization-name']
+    session['orgId'] = org_id
     devices = vmanage.get_request('system/device/vedges')
     vmanage.logout()
     models = '<option label="all">all</option>\n'
@@ -131,12 +135,84 @@ def listtemplates():
     model = request.args.get('model') or 'all'
     vmanage = login()
     data = list_templates(vmanage, model)
+    session['templateList'] = data
     vmanage.logout()
     data.insert(0, ['UUID', 'Name', 'Description', 'Device Type'])
-    output = buildtable(data)
+    output = buildtable(data, link='/edittemplate?templateId=')
+    instructions = Markup(f'List of all templates for model: {model}<br>\n'
+                          f'Selecting a template from this list will allow you to customize the variable display '
+                          f'for editing or deploying new edges with this template.<br>\n')
 
-    return render_template('table.html', title='List Templates', instructions='List of all templates',
+    return render_template('table.html', title='List Templates', instructions=instructions,
                            data=Markup(output))
+
+
+@app.route('/edittemplate')
+def edit_template():
+    template_id = request.args.get('templateId')
+    session['templateId'] = template_id
+    vmanage = login()
+    template_list = vmanage.get_request('template/device')['data']
+    for x in template_list:
+        if x['templateId'] == template_id:
+            template_name = x['templateName']
+            break
+    payload = {
+        "templateId": template_id,
+        "deviceIds": [],
+        "isEdited": False,
+        "isMasterEdited": False
+    }
+    data = vmanage.post_request('template/device/config/input', payload=payload)
+
+    org_id = session['orgId']
+    my_db = MyDb(org_id)
+    if not my_db.template_exists(template_id):
+        keys = {x['property']: x['title'] for x in data['header']['columns']}
+        my_db.template_init(template_id, template_name, keys)
+    template_dict = my_db.template_get(template_id)
+    my_db.close()
+
+    vmanage.logout()
+    table = '<form action="/input_template_values">\n<table>\n' \
+            '<tr><th colspan=3 align=left>Property<br>Title</th></tr>' \
+            '<tr><th align=left>Description</th><th align=left>Type</th><th align=left>Category</th></tr>\n'
+
+    for prop in data['header']['columns']:
+        if prop['editable']:
+            table += f'<tr><td colspan=3><b>{prop["title"]}<br></b>\n{prop["property"]}<br>\n</td></tr>' \
+                     f'<tr><td><input type=text value="{template_dict[prop["property"]][0]}" ' \
+                     f'name="{prop["property"]}0" style="width: 600px;"></td>' \
+                     f'<td><input type=text value="{template_dict[prop["property"]][1]}" ' \
+                     f'name="{prop["property"]}1"></td>' \
+                     f'<td><input type=text value="{template_dict[prop["property"]][2]}" ' \
+                     f'name="{prop["property"]}2"></td></tr>'
+    table += f'</table>\n<input type=submit></form>'
+    instructions = Markup(f'<h2>Template Name {template_name}</h2>ID: {template_id}<br><br>\n')
+
+    return render_template('table.html', data=Markup(table), instructions=instructions, title='Edit Template')
+
+
+@app.route('/input_template_values')
+def input_template_values():
+
+    my_db = MyDb(session['orgId'])
+    template_id = session['templateId']
+    template_dict = my_db.template_get(template_id)
+    keys = []
+    args = request.args
+    for prop in template_dict:
+        try:
+            keys.append([prop, args[f'{prop}0'].replace('+', ' '),
+                         args[f'{prop}1'].replace('+', ' '),
+                         args[f'{prop}2'].replace('+', ' ')])
+        except KeyError:
+            continue
+    my_db.template_update(template_id, keys)
+    my_db.close()
+    session['templateId'] = template_id
+
+    return make_response(redirect(url_for(f'device_template')))
 
 
 ###########################################################################
@@ -183,7 +259,6 @@ def rmaedge():
     #
 
     vmanage = login()
-    print(oldedge)
     template = get_device_template_variables(vmanage, oldedge)
     session['template'] = template
     vmanage.logout()
@@ -248,7 +323,7 @@ def editedge():
         vmanage = login()
         data = list_edges(vmanage, mode='vmanage', model=model)
         data.insert(0, ['UUID', 'Hostname', 'Model', 'Mode'])
-        output = buildtable(data, link='/editedge?edge=')
+        output = buildtable(data, link='/device_template?edge=')
         vmanage.logout()
         return render_template('table.html', data=Markup(output), title='Edit Edge Values',
                                instructions=Markup('Select the Edge device to edit:<br><br>'))
@@ -346,7 +421,7 @@ def deployedge():
     data = list_templates(vmanage, model=session['model'])
     vmanage.logout()
     data.insert(0, ['uuid', 'Name', 'Description', 'device type'])
-    output = buildtable(data, link='/editedge?templateId=')
+    output = buildtable(data, link='/device_template?templateId=')
     return render_template('table.html', data=Markup(output), title='Pick a template',
                            instructions=Markup('Select the template to apply:<br><br>'))
 
@@ -432,6 +507,66 @@ def sitereport():
         edge_table = edge_table.replace(f'table{num}table', table)
 
     return render_template('sitereport.html', siteid=siteid, edge_table=Markup(edge_table))
+
+
+@app.route('/device_template')
+def device_template():
+
+    try:
+        device_id = request.args.get('edge') or session['edge']
+    except KeyError:
+        device_id = ''
+
+    try:
+        template_id = request.args.get('templateId') or session['templateId']
+    except (IndexError, KeyError):
+        vmanage = login()
+        response = vmanage.get_request(f'system/device/vedges?uuid={device_id}')
+        template_id = response['data'][0]['templateId']
+        vmanage.logout()
+
+    vmanage = login()
+    payload = {
+        "templateId": template_id,
+        "deviceIds": [device_id],
+        "isEdited": False,
+        "isMasterEdited": False
+    }
+
+    response = vmanage.post_request('template/device/config/input', payload=payload)
+    print(response)
+    vmanage.logout()
+    my_db = MyDb(session['orgId'])
+    template_dict = my_db.template_get(template_id)
+    my_db.close()
+    not_editable = '<table>'
+    editable_dict = {}
+    for num, x in enumerate(response['header']['columns']):
+        if response['data']:
+            value = response["data"][0][x["property"]]
+        else:
+            value = ''
+        if not x['editable']:
+            not_editable += f'<tr><td>{x["title"]} ({x["property"]})</td>' \
+                            f'<td>{value}</td></tr>\n'
+        else:
+            description = template_dict[x['property']][0]
+            category = template_dict[x['property']][2]
+            if category not in editable_dict.keys():
+                editable_dict[category] = f'<button class="collapsible" type="button">{category}</button>' \
+                                          f'<div class="content"><p><table>'
+            editable_dict[category] += f'<tr><td><div class="tooltip">{description}' \
+                                       f'<span class="tooltiptext">{x["title"]}<br>({x["property"]})</span></div></td>' \
+                                       f'<td><INPUT TYPE="text" ID="{x["property"]}" NAME="{x["property"]}" ' \
+                                       f'VALUE="{value}"</td></tr>\n'
+
+    not_editable += '</table>'
+    editable = ''
+    for category in editable_dict:
+        editable += editable_dict[category]
+        editable += f'</table></p></div>\n'
+    return render_template('collapsible.html', not_editable=Markup(not_editable),
+                           editable=Markup(editable), template_id=template_id)
 
 
 if __name__ == '__main__':
