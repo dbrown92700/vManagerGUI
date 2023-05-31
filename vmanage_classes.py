@@ -10,18 +10,24 @@ class Edge:
         self.model = edge['device-model']
         self.reachability = edge['reachability']
         self.validity = edge['validity']
+        self.uuid = edge['uuid']
+        self.version = edge['version']
         self.tables = {}
         self.interfaces = []
         self.config = ''
         self.tloc_ext_interfaces = []
         self.tloc_ext_addresses = []
 
-    def get_arp(self, vmanage):
+    def get_tables(self, vmanage):
 
         # Adds the ARP table (type dict) to Edge
 
-        url = f'/device/arp?deviceId={self.sys_ip}'
-        self.tables['arp'] = vmanage.get_request(url)['data']
+        for table in ['arp', 'vrrp']:
+            url = f'device/{table}?deviceId={self.sys_ip}'
+            self.tables[table] = vmanage.get_request(url)['data']
+        for table in ['omp', 'bgp', 'bfd']:
+            url = f'device/{table}/summary?deviceId={self.sys_ip}'
+            self.tables[table] = vmanage.get_request(url)['data']
 
     def get_wan_interfaces(self, vmanage):
 

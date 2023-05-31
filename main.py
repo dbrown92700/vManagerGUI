@@ -480,20 +480,33 @@ def sitereport():
     site = Site(vmanage, siteid)
     for edge in site.edges:
         edge.get_wan_interfaces(vmanage)
+        edge.get_tables(vmanage)
     vmanage.logout()
-    siteid = request.args.get('siteid')
 
     edges_dict = {}
     interfaces_tables = []
+    vrrp_tables = []
+    bfd_tables = []
+    bgp_tables = []
+    arp_tables = []
+    omp_tables = []
     for edge_num, edge in enumerate(site.edges):
         edges_dict.update({edge.hostname: {
             'Model': edge.model,
             'System IP': edge.sys_ip,
             'Certificate': edge.validity,
             'Reachability': edge.reachability,
-            'WAN Interfaces': f'table{edge_num}table'
+            'Software': edge.version,
+            'Serial Number': edge.uuid,
+            'WAN Interfaces': f'table{edge_num}table',
+            'OMP': f'omp{edge_num}omp',
+            'BFD': f'bfd{edge_num}bfd',
+            'BGP': f'bgp{edge_num}bgp',
+            'ARP': f'arp{edge_num}arp',
+            'VRRP': f'vrrp{edge_num}vrrp',
         }})
         wan_interfaces = {}
+        vrrp = bgp = {}
         for num, interface in enumerate(edge.interfaces):
             wan_interfaces[f'WAN Interface {num + 1}'] = {f'Interface': interface['interface'],
                                                           f'Color': interface['color'],
@@ -502,9 +515,45 @@ def sitereport():
                                                           f'vSmart Conns': interface['num-vsmarts']
                                                           }
         interfaces_tables.append(pd.DataFrame(wan_interfaces).to_html())
+        for group in edge.tables['vrrp']:
+            vrrp[group["if-name"]] = {'Group': group['group-id'],
+                                      'VIP': group['virtual-ip'],
+                                      'State': group['vrrp-state']
+                                      }
+        vrrp_tables.append(pd.DataFrame(vrrp).to_html())
+        omp_tables.append(f'State:{edge.tables["omp"][0]["operstate"]}<br>'
+                          f'Routes Rec:{edge.tables["omp"][0]["routes-received"]}<br>'
+                          f'Routes Sent:{edge.tables["omp"][0]["routes-sent"]}<br>'
+                          f'Routes Installed:{edge.tables["omp"][0]["routes-installed"]}<br>')
+        bfd_tables.append(f'BFD Max:{edge.tables["bfd"][0]["bfd-sessions-max"]}<br>'
+                          f'BFD Up:{edge.tables["bfd"][0]["bfd-sessions-up"]}<br>')
+        if len(edge.tables['bgp']) == 0:
+            bgp_tables.append('N/A')
+        arp_list = 'ARP Learned on:'
+        for entry in edge.tables['arp']:
+            try:
+                if 'dynamic' in entry['mode']:
+                    if entry['interface'] not in arp_list:
+                        arp_list += f'<br>{entry["interface"]}'
+            except KeyError:
+                continue
+        if arp_list == 'ARP Learned on:':
+            arp_list = 'ARP Learned on:<br>None'
+        arp_tables.append(arp_list)
+
     edge_table = pd.DataFrame(data=edges_dict).to_html()
     for num, table in enumerate(interfaces_tables):
         edge_table = edge_table.replace(f'table{num}table', table)
+    for num, table in enumerate(vrrp_tables):
+        edge_table = edge_table.replace(f'vrrp{num}vrrp', table)
+    for num, table in enumerate(omp_tables):
+        edge_table = edge_table.replace(f'omp{num}omp', table)
+    for num, table in enumerate(bfd_tables):
+        edge_table = edge_table.replace(f'bfd{num}bfd', table)
+    for num, table in enumerate(bgp_tables):
+        edge_table = edge_table.replace(f'bgp{num}bgp', table)
+    for num, table in enumerate(arp_tables):
+        edge_table = edge_table.replace(f'arp{num}arp', table)
 
     return render_template('sitereport.html', siteid=siteid, edge_table=Markup(edge_table))
 
