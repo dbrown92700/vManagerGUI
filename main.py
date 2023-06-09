@@ -35,6 +35,16 @@ app = Flask(__name__)
 app.secret_key = 'any random string'
 
 
+@app.route('/test')
+def test():
+    return render_template('dynamic_table2.html', rowNum=2)
+
+
+@app.route('/test-post', methods=['POST'])
+def test_post():
+    return request.form
+
+
 ###########################################################################
 #  Prompt user to set vManage settings
 ###########################################################################
@@ -51,26 +61,19 @@ def getsettings():
 
 
 ###########################################################################
-#  Read and save settings
-###########################################################################
-
-@app.route('/savesettings')
-def savesettings():
-    resp = make_response(redirect(url_for('menu')))
-
-    # Save vManage settings in a cookie
-    for arg in request.args:
-        resp.set_cookie(arg, request.args.get(arg), secure=True, httponly=True)
-
-    return resp
-
-
-###########################################################################
 #  Main menu.  This screen also clears any leftover session variables
 ###########################################################################
 
-@app.route('/menu')
+@app.route('/menu', methods=['GET', 'POST'])
 def menu():
+
+    if request.method == 'POST':
+        resp = make_response(redirect(url_for('menu')))
+        form = request.form
+        for arg in form:
+            resp.set_cookie(arg, form[arg], secure=True, httponly=True)
+        return resp
+
     # Clear user session variables from previous tasks
     session.clear()
     try:
@@ -174,10 +177,9 @@ def edit_template():
     my_db.close()
 
     vmanage.logout()
-    table = '<form action="/input_template_values">\n<table>\n' \
+    table = '<form action="/device_template" method="POST">\n<table>\n' \
             '<tr><th colspan=3 align=left>Property<br>Title</th></tr>' \
             '<tr><th align=left>Description</th><th align=left>Type</th><th align=left>Category</th></tr>\n'
-
     for prop in data['header']['columns']:
         if prop['editable']:
             table += f'<tr><td colspan=3><b>{prop["title"]}<br></b>\n{prop["property"]}<br>\n</td></tr>' \
@@ -191,28 +193,6 @@ def edit_template():
     instructions = Markup(f'<h2>Template Name {template_name}</h2>ID: {template_id}<br><br>\n')
 
     return render_template('table.html', data=Markup(table), instructions=instructions, title='Edit Template')
-
-
-@app.route('/input_template_values')
-def input_template_values():
-
-    my_db = MyDb(session['orgId'])
-    template_id = session['templateId']
-    template_dict = my_db.template_get(template_id)
-    keys = []
-    args = request.args
-    for prop in template_dict:
-        try:
-            keys.append([prop, args[f'{prop}0'].replace('+', ' '),
-                         args[f'{prop}1'].replace('+', ' '),
-                         args[f'{prop}2'].replace('+', ' ')])
-        except KeyError:
-            continue
-    my_db.template_update(template_id, keys)
-    my_db.close()
-    session['templateId'] = template_id
-
-    return make_response(redirect(url_for(f'device_template')))
 
 
 ###########################################################################
@@ -515,12 +495,15 @@ def sitereport():
                                                           f'vSmart Conns': interface['num-vsmarts']
                                                           }
         interfaces_tables.append(pd.DataFrame(wan_interfaces).to_html())
-        for group in edge.tables['vrrp']:
-            vrrp[group["if-name"]] = {'Group': group['group-id'],
-                                      'VIP': group['virtual-ip'],
-                                      'State': group['vrrp-state']
-                                      }
-        vrrp_tables.append(pd.DataFrame(vrrp).to_html())
+        if len(edge.tables['vrrp']) == 0:
+            vrrp_tables.append('N/A')
+        else:
+            for group in edge.tables['vrrp']:
+                vrrp[group["if-name"]] = {'Group': group['group-id'],
+                                          'VIP': group['virtual-ip'],
+                                          'State': group['vrrp-state']
+                                          }
+            vrrp_tables.append(pd.DataFrame(vrrp).to_html())
         omp_tables.append(f'State:{edge.tables["omp"][0]["operstate"]}<br>'
                           f'Routes Rec:{edge.tables["omp"][0]["routes-received"]}<br>'
                           f'Routes Sent:{edge.tables["omp"][0]["routes-sent"]}<br>'
@@ -529,6 +512,9 @@ def sitereport():
                           f'BFD Up:{edge.tables["bfd"][0]["bfd-sessions-up"]}<br>')
         if len(edge.tables['bgp']) == 0:
             bgp_tables.append('N/A')
+        else:
+            for neighbor in edge.tables['bgp']:
+                bgp_tables.append(f'{neighbor["peer-addr"]}: {neighbor["state"]}')
         arp_list = 'ARP Learned on:'
         for entry in edge.tables['arp']:
             try:
@@ -558,14 +544,33 @@ def sitereport():
     return render_template('sitereport.html', siteid=siteid, edge_table=Markup(edge_table))
 
 
-@app.route('/device_template')
+@app.route('/device_template', methods=['GET', 'POST'])
 def device_template():
 
-    try:
-        device_id = request.args.get('edge') or session['edge']
-    except KeyError:
+    # If routed from edittemplate, read the updated fields from the POST:
+    if request.method == 'POST':
+        my_db = MyDb(session['orgId'])
+        template_id = session['templateId']
+        template_dict = my_db.template_get(template_id)
+        keys = []
+        args = request.form
+        for prop in template_dict:
+            try:
+                keys.append([prop, args[f'{prop}0'],
+                             args[f'{prop}1'],
+                             args[f'{prop}2']])
+            except KeyError:
+                continue
+        my_db.template_update(template_id, keys)
+        my_db.close()
         device_id = ''
+    else:
+        try:
+            device_id = request.args.get('edge') or session['edge']
+        except KeyError:
+            device_id = ''
 
+    # Get template ID from args, session or vManage
     try:
         template_id = request.args.get('templateId') or session['templateId']
     except (IndexError, KeyError):
@@ -574,6 +579,7 @@ def device_template():
         template_id = response['data'][0]['templateId']
         vmanage.logout()
 
+    # Get device variable values from vManage
     vmanage = login()
     payload = {
         "templateId": template_id,
@@ -581,41 +587,103 @@ def device_template():
         "isEdited": False,
         "isMasterEdited": False
     }
-
     response = vmanage.post_request('template/device/config/input', payload=payload)
-    print(response)
     vmanage.logout()
+
+    # Get template settings from database
     my_db = MyDb(session['orgId'])
     template_dict = my_db.template_get(template_id)
     my_db.close()
-    not_editable = '<table>'
+
+    # Initialize data structures
     editable_dict = {}
-    for num, x in enumerate(response['header']['columns']):
+    not_editable = '<table>'
+    row_count = 0
+    columns = response['header']['columns']
+    value_tables = {}
+
+    # Build out table-style formatted fields
+    for field in columns:
+        if template_dict[field['property']][2] == 'NAT':
+            value_tables[field['property']] = template_dict[field['property']]
+    if len(value_tables) > 0:
+        # Determine column headers for table and write headers to table
+        nat_fields = []
+        for key in list(value_tables.keys()):
+            nat_field = key.rstrip('0123456789')
+            if nat_field not in nat_fields:
+                nat_fields.append(nat_field)
+        field_table = '<table width="1120" border=1>\n<tr>'
+        for field in nat_fields:
+            field_table += f'<th width="186">{field}</th>'
+        field_table += '</tr></table>\n<div id="fieldTable">\n'
+
+        # Calculate maximum number of rows and determine how many rows to display
+        row_count = int(len(value_tables) / len(nat_fields))
+        field_table = f'<b>Maximum Rows: {row_count}<b>' + field_table
+
+        for last_row in range(1, row_count+1):
+            if response["data"][0][f'{nat_fields[0]}{last_row}'] == '!':
+                if last_row > 1:
+                    last_row -= 1
+                break
+
+        # Build inputs table
+        for row in range(1, last_row+1):
+            field_table += f'\n<div class="field">{row}:\n'
+            # show + and - buttons only for last row
+            if row == last_row:
+                display = 'block'
+            else:
+                display = 'none'
+            # Get data values for each field and add form input to table
+            for field in nat_fields:
+                if response['data']:
+                    value = response["data"][0][f'{field}{row}']
+                else:
+                    value = ''
+                field_table += f'<input type="text" name="{field}{row}" value="{value}">'
+            field_table += f'\n<plus onclick="addField(this)" style="display: {display};">+</plus>' \
+                           f'<minus onclick="removeField(this)" style="display: {display};">-</minus></div>'
+        field_table += '\n</div>'
+        editable_dict['NAT'] = f'<button class="collapsible" type="button">NAT</button>' \
+                               f'<div class="content"><p><table>{field_table}'
+
+    # Build html content for remaining fields
+    for num, field in enumerate(response['header']['columns']):
         if response['data']:
-            value = response["data"][0][x["property"]]
+            value = response["data"][0][field["property"]]
         else:
             value = ''
-        if not x['editable']:
-            not_editable += f'<tr><td>{x["title"]} ({x["property"]})</td>' \
+        if not field['editable']:
+            not_editable += f'<tr><td>{field["title"]} ({field["property"]})</td>' \
                             f'<td>{value}</td></tr>\n'
         else:
-            description = template_dict[x['property']][0]
-            category = template_dict[x['property']][2]
+            description = template_dict[field['property']][0]
+            category = template_dict[field['property']][2]
+            if category == 'NAT':
+                continue
             if category not in editable_dict.keys():
                 editable_dict[category] = f'<button class="collapsible" type="button">{category}</button>' \
-                                          f'<div class="content"><p><table>'
-            editable_dict[category] += f'<tr><td><div class="tooltip">{description}' \
-                                       f'<span class="tooltiptext">{x["title"]}<br>({x["property"]})</span></div></td>' \
-                                       f'<td><INPUT TYPE="text" ID="{x["property"]}" NAME="{x["property"]}" ' \
+                                          f'<div class="content" style="overflow-y:scroll;"><p><table>'
+            color = 'black'
+            try:
+                if field['optional']:
+                    color = 'blue'
+            except KeyError:
+                pass
+            editable_dict[category] += f'<tr><td><div class="tooltip" style="color: {color}">{description}' \
+                                       f'<span class="tooltiptext">{field["title"]}<br>({field["property"]})</span>' \
+                                       f'</div></td>' \
+                                       f'<td><INPUT TYPE="text" ID="{field["property"]}" NAME="{field["property"]}" ' \
                                        f'VALUE="{value}"</td></tr>\n'
-
     not_editable += '</table>'
     editable = ''
     for category in editable_dict:
         editable += editable_dict[category]
         editable += f'</table></p></div>\n'
-    return render_template('collapsible.html', not_editable=Markup(not_editable),
-                           editable=Markup(editable), template_id=template_id)
+    return render_template('device_template.html', not_editable=Markup(not_editable),
+                           editable=Markup(editable), template_id=template_id, rowNum=row+1, maxRowNum=row_count)
 
 
 if __name__ == '__main__':

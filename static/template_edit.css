@@ -73,3 +73,110 @@
   visibility: visible;
   opacity: 1;
 }
+
+
+
+*{
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body{
+	font-family: sans-serif;
+	min-height: 100%;
+	color: #555;
+	width:  1200px;
+	margin: 0 auto;
+	padding-top: 20px;
+}
+
+h1{
+	text-align: center;
+	color:  #888;
+}
+
+
+form{
+	width:  100%;
+}
+
+.field{
+	margin-bottom: 10px;
+	display: flex;
+	transition: opacity 0.3s;
+}
+.field input{
+	padding: 5px 10px;
+	width: 100%;
+	border: none;
+	 border: thin solid #d4d4d4;
+	font-size: 20px;
+	color: #888;
+	font-family: ubuntu, sans-serif;
+	background-color: #f9f9f9;
+}
+.field input:focus{
+	outline: none;
+}
+
+.field plus{
+	display: inline-block;
+	margin-left: 10px;
+	cursor: pointer;
+	background-color: #f9f9f9;
+	padding: 10px;
+	font-size: 20px;
+	transition: all 0.3s;
+	font-weight: bold;
+	border: thin solid #d4d4d4;
+}
+.field plus:hover{
+	background-color: green;
+	border: thin solid green;
+	color: #fff;
+}
+.field plus:last-child:hover{
+	background-color: red;
+	border: thin solid red;
+	color: #fff;
+}
+
+.field minus{
+	margin-left: 10px;
+	cursor: pointer;
+	background-color: #f9f9f9;
+	padding: 10px;
+	font-size: 20px;
+	transition: all 0.3s;
+	font-weight: bold;
+	border: thin solid #d4d4d4;
+}
+.field minus:hover{
+	background-color: green;
+	border: thin solid green;
+	color: #fff;
+}
+.field minus:last-child:hover{
+	background-color: red;
+	border: thin solid red;
+	color: #fff;
+}
+
+
+button{
+	display: block;
+	padding: 10px 20px;
+	margin-top: 30px;
+	width:  150px;
+	float: left;
+	font-size: 16px;
+	background-color: #5b8ebf;
+	border: thin solid #d5e4d4;
+	cursor: pointer;
+	color: #fff;
+}
+button:active{
+	background-color: #aedea6;
+	color: #000;
+}

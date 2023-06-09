@@ -6,20 +6,28 @@
 </head>
 <body>
 
-<h2>Device Settings</h2>
+<h2>Edit Device Template Variables</h2>
+<br>
 <ul>
     <li>Enter settings for each variable below</li>
     <li>Mouse hover over the description for more details</li>
+    <li>Fields with <span style="color: blue">blue</span> text are optional settings</li>
+    <li>Some fields in black may be mandatory only if a corresponding optional field is filled</li>
 </ul>
+<br>
 <a href="/edittemplate?templateId={{template_id}}">Edit this template Categories and Descriptions</a><br>
 <a href="/menu">Return to main menu</a><br><br>
+<h2>Device Information:</h2>
 {{not_editable}}
-<p>Settings:</p>
+<br><h2>Editable Settings:</h2>
 <form action="/savesettings">
 {{editable}}
-	<br>
-  <input type="submit" value="Submit">
+  <button type="submit">Submit</button>
 </form>
+<script>
+    rowNum = {{rowNum}};
+    maxRowNum = {{maxRowNum}};
+</script>
 <script>
 var coll = document.getElementsByClassName("collapsible");
 var i;
@@ -31,11 +39,15 @@ for (i = 0; i < coll.length; i++) {
     if (content.style.maxHeight){
       content.style.maxHeight = null;
     } else {
-      content.style.maxHeight = content.scrollHeight + "px";
+      content.style.maxHeight = 500 + "px";
+<!--      content.style.maxHeight = content.scrollHeight + "px";-->
     }
   });
 }
 </script>
+<script src="static/dynamic_table.js">
+</script>
+
 
 </body>
 </html>

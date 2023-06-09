@@ -25,8 +25,11 @@ class Edge:
         for table in ['arp', 'vrrp']:
             url = f'device/{table}?deviceId={self.sys_ip}'
             self.tables[table] = vmanage.get_request(url)['data']
-        for table in ['omp', 'bgp', 'bfd']:
+        for table in ['omp', 'bfd']:
             url = f'device/{table}/summary?deviceId={self.sys_ip}'
+            self.tables[table] = vmanage.get_request(url)['data']
+        for table in ['bgp']:
+            url = f'device/{table}/neighbors?deviceId={self.sys_ip}'
             self.tables[table] = vmanage.get_request(url)['data']
 
     def get_wan_interfaces(self, vmanage):

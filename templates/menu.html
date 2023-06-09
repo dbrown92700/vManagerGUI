@@ -12,7 +12,7 @@
 <br>
 <ul style="margin-top: 30px;
   margin-left: 80px;">
-    <li style="margin-bottom: 10px;"><b>List Edges</b>
+    <li style="margin-bottom: 10px;"><b>List Edges: </b>Provides a simple list of all edges and their configuration status.<br><br>
         <form action="/listedges">
         <i>Filter: </i>Device Type - <select name="model">
             {{models}}
@@ -24,35 +24,41 @@
         </select>
             <input type="submit" value="Submit">
         </form></li>
-    <li style="margin-bottom: 10px;"><b>List Templates</b>
+    <li style="margin-bottom: 10px;"><b>Device Template Structure: </b>This capability allows you to create a custom device template<br>
+        varable structure by putting variables into categories and enhancing the descriptions.<br><br>
         <form action="/listtemplates">
         <i>Filter: </i>Device Type - <select name="model">
             {{models}}
         </select>
             <input type="submit" value="Submit">
         </form></li>
-    <li style="margin-bottom: 10px;"><b>Deploy a new Edge</b>
+    <li style="margin-bottom: 10px;"><b>Deploy a new Edge: </b>Select an edge device and template. Fill in settings using the<br>
+        structure defined using the Device Templates menu.<br><br>
         <form action="/deployedge">
         <i>Filter: </i>Device Type - <select name="model">
             {{models}}
         </select>
             <input type="submit" value="Submit">
         </form></li>
-    <li style="margin-bottom: 10px;"><b>Change an Edge setting</b>
+    <li style="margin-bottom: 10px;"><b>Change an Edge setting: </b>Allows you to change an edge variable using the enhanced template
+        structure<br><br>
         <form action="/editedge">
         <i>Filter: </i>Device Type - <select name="model">
             {{models}}
         </select>
             <input type="submit" value="Submit">
         </form></li>
-    <li style="margin-bottom: 10px;"><b>RMA an Edge</b>
+    <li style="margin-bottom: 10px;"><b>RMA an Edge: </b>This is a workflow to replace an existing device with a like one in vManage for<br>
+        RMA purposes.<br><br>
         <form action="/rmaedge">
         <i>Filter: </i>Device Type - <select name="model">
             {{models}}
         </select>
             <input type="submit" value="Submit">
         </form></li>
-    <li style="margin-bottom: 10px;"><b>Site Report</b>
+    <li style="margin-bottom: 10px;"><b>Site Report/Bandwidth Graph: </b>Generates a report for all edges in a site with several<br>
+        monitoring checks. Also allows you to generate a full site, 7 day bandwidth graph.<br>
+        (may take a few minutes to run)<br><br>
         <form action="/sitereport">
         <i>Filter: </i>Site ID - <select name="siteid">
             {{sites}}
