@@ -1,42 +1,17 @@
-// This method will add a new row
-function addNewRow(table){
-//    console.log(table.id);
-    var maxRows = document.getElementById(table.id+"-maxrows").innerText;
-//    console.log(maxRows);
-    var rowCount = table.rows.length;
-//    console.log(rowCount);
-    if (rowCount === Number(maxRows)+1) {
-        alert("At maximum rows supported by this category.");
-        return;
+function addField(plusElement){
+    if (rowNum === (maxRowNum + 1)) {
+        return false;
     }
-    var cellCount = table.rows[0].cells.length;
-    var row = table.insertRow(rowCount);
-    for(var i =0; i < cellCount; i++){
-        var cell = row.insertCell(i);
-        var cellName = table.rows[0].cells[i].innerText;
-        cell.innerHTML='<input type="text" name="'+cellName.replace("###", rowCount)+'"/>';
-//        else{
-//          cell.innerHTML = '<input type="button" value="delete" onclick="deleteRow(this)" />';
-//          cell.innerHTML = '<input type="button" value="Add Row" onclick="addNewRow()" />';
-//        }
-    }
-}
-// This method will delete a row
-function deleteRow(table){
-    var rowCount = table.rows.length;
-    if(rowCount <= 1){
-        alert("There is no row available to delete!");
-        return;
-    }
-    table.deleteRow(rowCount-1);
-}
-
-function addField(plusElement) {
-
-    // If max rows are displayed don't do anything
-    if (rowNum === (maxRowNum + 1)) {return false;}
 
     let lastField = document.getElementById("fieldTable").lastChild;
+
+//    let secondField = plusElement.previousElementSibling
+//    let firstField = secondField.previousElementSibling
+
+    // Stopping the function if the input field has no value.
+//    if((firstField.value.trim() === "") || (secondField.value.trim() === "")){
+//        return false;
+//    }
 
     // creating the div container.
     let div = document.createElement("div");
@@ -84,6 +59,7 @@ function addField(plusElement) {
     div.appendChild(minus);
 
     // Un hiding the minus sign.
+//    plusElement.nextElementSibling.style.display = "block"; // the minus sign
     plusElement.nextElementSibling.style.display = "none"; // the minus sign
 
     // Hiding the plus sign.
@@ -101,3 +77,48 @@ function removeField(minusElement){
 }
 
 let form = document.forms[0];
+
+
+
+
+//      form.addEventListener("submit", fetchTextNotes);
+//      function fetchTextNotes(event){
+//          // prevent the form to communicate with the server.
+//          event.preventDefault();
+//
+//          // Fetch the values from the input fields.
+//          let data = new FormData(form);
+//
+//          // Storing the values inside an array so we can handle them.
+//          // we don't want empty values.
+//          let notes = [];
+//          data.forEach( function(value){
+//              if(value !== ""){
+//                  notes.push(value);
+//              }
+//          });
+//
+//          // Output the values on the screen.
+//          let out = "";
+//          for(let note of notes){
+//              out += `
+//                  <p>${note} <span onclick="markAsDone(this)">Mark as done</span></p>
+//              `;
+//          }
+//          document.querySelector(".notes").innerHTML = out;
+//
+//          // Delete all input elements except the last one.
+//          let inputFields = document.querySelectorAll(".field");
+//          inputFields.forEach(function(element, index){
+//              if(index == inputFields.length - 1){
+//                  element.children[0].value = "";
+//              }else{
+//                  element.remove();
+//              }
+//          });
+//      }
+
+//function markAsDone(element){
+//    element.classList.add("mark");
+//    element.innerHTML = "&check;";
+//}

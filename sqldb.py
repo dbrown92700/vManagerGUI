@@ -61,14 +61,36 @@ class MyDb:
             self.my_cursor.execute(f'INSERT INTO `{template_id}` (property, description, type, category) '
                                    f'VALUES ("{key}", "{description}", "text", "{category}")')
 
-    def template_get(self, template_id):
+    # Template get function validates that database entry exists, initializes if necessary,
+    # validates that the database fields matches the template fields, and returns the database as a dictionary.
+    # If template name and keys are not specified, function returns database entry with no update.
+    def template_get(self, template_id, template_name=None, vm_keys=()):
+        # Validate if Template is initialized and initialize if necessary
+        count = self.my_cursor.execute(f'SELECT * FROM `{self.org_id}` WHERE templateId="{template_id}"')
+        if template_name and (count == 0):
+            self.template_init(template_id, template_name, vm_keys)
+        # Fetch all lines from the database template entry
         self.my_cursor.execute(f'SELECT * FROM `{template_id}`')
         properties = self.my_cursor.fetchall()
         properties_dict = {}
         for prop in properties:
+            # Delete any fields that are no longer in the template
+            if vm_keys and (prop[0] not in vm_keys):
+                self.my_cursor.execute(f'DELETE FROM `{template_id}` WHERE property="{prop[0]}"')
+                continue
+            # Add relevant fields to the return data
             properties_dict[prop[0]] = [prop[1], prop[2], prop[3]]
+        for key in vm_keys:
+            # Add any new template fields that are not in the database
+            if key not in list(properties_dict.keys()):
+                properties_dict[key] = [key, "text", "New Template Value"]
+                command = f'INSERT INTO `{template_id}` (property, description, type, category) VALUES ' \
+                          f'("{key}", "{key}", "text", "New Template Value")'
+                print(command)
+                self.my_cursor.execute(command)
         return properties_dict
 
+    # Updates the settings for each field in the template database
     def template_update(self, template_id, properties):
         for prop in properties:
             if not self.my_cursor.execute(f'UPDATE `{template_id}` SET '

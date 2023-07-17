@@ -14,10 +14,6 @@
   background-color: #555;
 }
 
-th {
-text-align: left;
-}
-
 .collapsible:after {
   content: '\002B';
   color: white;
@@ -78,16 +74,7 @@ text-align: left;
   opacity: 1;
 }
 
-.container {
-  margin:0 auto;
-  width:100 %;
-  text-align:center
-}
 
-.dynamic_table {
-  width:100%;
-  border:1px solid #aaa
-}
 
 *{
 	margin: 0;
@@ -176,6 +163,7 @@ form{
 	color: #fff;
 }
 
+
 button{
 	display: block;
 	padding: 10px 20px;
@@ -183,16 +171,11 @@ button{
 	width:  150px;
 	float: left;
 	font-size: 16px;
-	background-color: #555;
+	background-color: #5b8ebf;
 	border: thin solid #d5e4d4;
 	cursor: pointer;
 	color: #fff;
 }
-
-button:hover{
-	background-color: #777;
-}
-
 button:active{
 	background-color: #aedea6;
 	color: #000;
