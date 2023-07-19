@@ -32,6 +32,14 @@ from sqldb import MyDb
 import re
 # from flask_debugtoolbar import DebugToolbarExtension
 
+# Fake PyMySQL's version and install as MySQLdb
+# https://adamj.eu/tech/2020/02/04/how-to-use-pymysql-with-django/
+import pymysql
+pymysql.version_info = (1, 4, 2, "final", 0)
+pymysql.install_as_MySQLdb()
+import MySQLdb
+
+
 app = Flask(__name__)
 app.secret_key = 'any random string'
 
@@ -42,6 +50,20 @@ app.debug = True
 ###########################################################################
 #  Prompt user to set vManage settings
 ###########################################################################
+
+@app.route('/test')
+def tester():
+    mydb = MySQLdb.connect(
+        host="localhost",
+        user="user",
+        passwd="C1sco12345!",
+        db="vmanager",
+        autocommit=True
+        )
+    my_cursor = mydb.cursor()
+    my_cursor.execute('SHOW TABLES')
+    return(my_cursor)
+
 
 @app.route('/')
 def login_page():
