@@ -57,6 +57,7 @@ app.debug = True
 @app.route('/test')
 def tester():
     load_dotenv()
+    return(os.getenv('DATABASE'))
     mydb = MySQLdb.connect(
         host=os.getenv("SQLHOST"),
         user=os.getenv("SQLUSER"),
