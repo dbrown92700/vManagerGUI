@@ -30,7 +30,7 @@ import plotly
 import plotly.express as px
 from sqldb import MyDb
 import re
-from flask_debugtoolbar import DebugToolbarExtension
+# from flask_debugtoolbar import DebugToolbarExtension
 
 app = Flask(__name__)
 app.secret_key = 'any random string'
