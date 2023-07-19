@@ -55,7 +55,7 @@ app.debug = True
 def tester():
     mydb = MySQLdb.connect(
         host="localhost",
-        user="user",
+        user="admin",
         passwd="C1sco12345!",
         db="vmanager",
         autocommit=True
