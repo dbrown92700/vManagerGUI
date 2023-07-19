@@ -62,7 +62,7 @@ def tester():
         )
     my_cursor = mydb.cursor()
     my_cursor.execute('SHOW TABLES')
-    return(my_cursor)
+    return(str(my_cursor))
 
 
 @app.route('/')
