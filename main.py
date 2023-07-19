@@ -38,6 +38,9 @@ import pymysql
 pymysql.version_info = (1, 4, 2, "final", 0)
 pymysql.install_as_MySQLdb()
 import MySQLdb
+import os
+from dotenv import load_dotenv
+
 
 
 app = Flask(__name__)
@@ -53,13 +56,14 @@ app.debug = True
 
 @app.route('/test')
 def tester():
+    load_dotenv()
     mydb = MySQLdb.connect(
-        host="localhost",
-        user="admin",
-        passwd="C1sco12345!",
-        db="vmanager",
-        autocommit=True
-        )
+        host=os.getenv("SQLHOST"),
+        user=os.getenv("SQLUSER"),
+        passwd=os.getenv("SQLPASS"),
+        db=os.getenv("DATABASE"),
+        autocommit=True,
+        ssl={"ca": os.getenv("SQLCERT")})
     my_cursor = mydb.cursor()
     my_cursor.execute('SHOW TABLES')
     return(str(my_cursor))
