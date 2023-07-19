@@ -14,12 +14,12 @@ class MyDb:
         load_dotenv()
         print(os.getenv('HOST'))
         self.mydb = MySQLdb.connect(
-            host=os.getenv("HOST"),
-            user=os.getenv("USERNAME"),
-            passwd=os.getenv("PASSWORD"),
+            host=os.getenv("SQLHOST"),
+            user=os.getenv("SQLUSER"),
+            passwd=os.getenv("SQLPASS"),
             db=os.getenv("DATABASE"),
             autocommit=True,
-            ssl={"ca": "/etc/ssl/cert.pem"})
+            ssl={"ca": os.getenv("SQLCERT")})
         self.my_cursor = self.mydb.cursor()
         self.my_cursor.execute('SHOW TABLES')
         self.org_id = org

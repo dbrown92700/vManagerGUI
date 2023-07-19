@@ -188,7 +188,7 @@ def edit_template():
                      f'name="{prop["property"]}1"></td>' \
                      f'<td><input type=text value="{template_dict[prop["property"]][2]}" ' \
                      f'name="{prop["property"]}2"></td></tr>'
-    table += f'</table>\n<input type=submit></form>\n' \
+    table += f'</table>\n<input type=submit class="button"></form>\n' \
              f'    <script type="text/javascript" language="JavaScript" src="static/edit_template.js"></script>\n' \
              f'    <script src="https://d3js.org/d3.v3.js"></script>\n'
     instructions = Markup(f'<h2>Template Name {template_name}</h2>ID: {template_id}<br><br>\n'
@@ -523,6 +523,15 @@ def sitereport():
 @app.route('/device_template', methods=['GET', 'POST'])
 def device_template():
 
+    # Ways to get here:
+    # - edit_template
+        # POST with form data, template_id in session, no device_id
+    # - edit_edge
+        # Get with device_id arg
+    # - deploy new edge
+        # Currently a get with form args???
+    # - RMA?
+        # Dunno?
 
     # Get template ID from args, session or vManage
     try:
@@ -554,8 +563,6 @@ def device_template():
         device_id = ''
     my_db.close()
 
-
-
     # Get device variable values from vManage
     vmanage = login()
     payload = {
@@ -567,10 +574,10 @@ def device_template():
     response = vmanage.post_request('template/device/config/input', payload=payload)
     vmanage.logout()
 
-    # Get template settings from database
-    my_db = MyDb(session['orgId'])
-    template_dict = my_db.template_get(template_id)
-    my_db.close()
+    # # Get template settings from database
+    # my_db = MyDb(session['orgId'])
+    # template_dict = my_db.template_get(template_id)
+    # my_db.close()
 
     # Initialize data structures
     editable_dict = {}

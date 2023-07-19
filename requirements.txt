@@ -7,3 +7,4 @@ pandas>=1.5.1
 python-dotenv==0.21.0
 PyMySQL==1.0.3
 mysqlclient==2.1.1
+pymysql
