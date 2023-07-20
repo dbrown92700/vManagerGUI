@@ -38,7 +38,39 @@ Runs as a Python3 Flask app natively for testing.  Tested on GCP and Apache for 
 
     `http://localhost:8080`
 
+# Apache Webserver Installation
 
+- Install Apache if necessary.  It's installed by default on Ubuntu.
+- Clone repository into /var/www
+> sudo git clone ...
+- Change to /var/www/vManagerGUI directory
+> cd /var/www/vManagerGUI
+- Create venv in /var/www/vManagerGUI
+> sudo python3 -m venv venv
+- Activate venv
+> sudo source venv/bin/activate
+- Install python packages
+> sudo pip install -r requirements.txt
+- Link WSGI and Apache config files to the correct directories.  Default config for 
+the website is to run on root at port 80. You will need to edit vmanager.apache.conf
+in the apache directory if that isn't available.
+> sudo ln -s apache/vmanager.wsgi \
+> sudo ln -s /var/www/vManagerGUI/apache/vmanager.apache.conf /etc/apache2/sites-available/
+- Disable the default website and enable the new website
+> sudo a2dissite 000-default.conf \
+> sudo a2ensite vmanager.apache.conf
+- Create .env file. Specify the certificate if needed for a secure connection. Local mysql
+does not require SSL.
+> sudo nano .env
+
+SQLHOST=localhost \
+SQLUSER=username \
+SQLPASS=password \
+DATABASE=vmanager \
+SQLCERT=/etc/ssl/cert.pem
+
+- Restart Apache
+> sudo systemctl reload apache2.service
 
 This project was written and is maintained by the following individuals:
 

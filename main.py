@@ -40,7 +40,7 @@ pymysql.install_as_MySQLdb()
 import MySQLdb
 import os
 from dotenv import load_dotenv
-
+import logging
 
 
 app = Flask(__name__)
@@ -50,26 +50,28 @@ app.debug = True
 # toolbar = DebugToolbarExtension(app)
 
 
+# Method to test database connection. Returns the error or the tables in the database.
+@app.route('/test_db_connection')
+def test_db_connection():
+    load_dotenv()
+    try:
+        mydb = MySQLdb.connect(
+            host=os.getenv("SQLHOST"),
+            user=os.getenv("SQLUSER"),
+            passwd=os.getenv("SQLPASS"),
+            db=os.getenv("DATABASE"),
+            autocommit=True,
+            ssl={"ca": os.getenv("SQLCERT")})
+    except Exception as e:
+        return str(e)
+    my_cursor = mydb.cursor()
+    count = my_cursor.execute('SHOW TABLES')
+    return f'tables in database<br>{re.sub("[()]","",str(my_cursor.fetchall())).replace(",","<br>")}'
+
+
 ###########################################################################
 #  Prompt user to set vManage settings
 ###########################################################################
-
-@app.route('/test')
-def tester():
-    load_dotenv()
-    return(os.getenv('DATABASE'))
-    mydb = MySQLdb.connect(
-        host=os.getenv("SQLHOST"),
-        user=os.getenv("SQLUSER"),
-        passwd=os.getenv("SQLPASS"),
-        db=os.getenv("DATABASE"),
-        autocommit=True,
-        ssl={"ca": os.getenv("SQLCERT")})
-    my_cursor = mydb.cursor()
-    my_cursor.execute('SHOW TABLES')
-    return(str(my_cursor))
-
-
 @app.route('/')
 def login_page():
     vmanage = request.cookies.get('vmanage')
@@ -216,7 +218,7 @@ def edit_template():
                      f'<td><input type=text value="{template_dict[prop["property"]][2]}" ' \
                      f'name="{prop["property"]}2"></td></tr>'
     table += f'</table>\n<input type=submit class="button"></form>\n' \
-             f'    <script type="text/javascript" language="JavaScript" src="static/edit_template.js"></script>\n' \
+             f'    <script type="text/javascript" language="JavaScript" src="static/device_template.js"></script>\n' \
              f'    <script src="https://d3js.org/d3.v3.js"></script>\n'
     instructions = Markup(f'<h2>Template Name {template_name}</h2>ID: {template_id}<br><br>\n'
                           f'<table>\n<tr><td>Save form as CSV File</td>'
