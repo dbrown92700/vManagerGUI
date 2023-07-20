@@ -148,14 +148,14 @@ def set_certificate(vmanage, uuid, model, state):
 def action_status(vmanage, id):
 
     ### Monitors a job status every 5 seconds and returns the result
-    output = '<br><b>Monitor Job Status:</b></br>'
+    output = '<b>Monitor Job Status:</b></br>\n'
     while (1):
         status = vmanage.get_request(f"device/action/status/{id}")
         status_res = status['summary']
-        output += '<br>' + str(status_res)
+        output += f'{status_res}<BR>\n'
         if status_res['status'] == "done":
             if ('Success' in status_res['count']) or ('Done - Scheduled' in status_res['count']):
                 return output
             elif 'Failure' in status_res['count']:
-                return "<br>" + str(status['data'][0]['activity']) + "<br>Failed"
+                return f"{status['data'][0]['activity']}\n<br>Failed<br>\n"
         sleep(5)

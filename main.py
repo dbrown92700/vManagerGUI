@@ -30,6 +30,7 @@ import plotly
 import plotly.express as px
 from sqldb import MyDb
 import re
+import logging
 # from flask_debugtoolbar import DebugToolbarExtension
 
 # Fake PyMySQL's version and install as MySQLdb
@@ -40,7 +41,6 @@ pymysql.install_as_MySQLdb()
 import MySQLdb
 import os
 from dotenv import load_dotenv
-import logging
 
 
 app = Flask(__name__)
@@ -341,32 +341,53 @@ def editedge():
 ###########################################################################
 #  Attach template and monitor job result
 ###########################################################################
-@app.route('/updatetemp', methods=['POST'])
-def updatetemp():
+@app.route('/push_device_settings', methods=['POST'])
+def push_device_settings():
     # Retrieve variables and modify template
-    template = session['template']
-    output = '<A HREF="/menu">Return to Main Menu.</A><BR>'
-    output += 'Old Template:<BR>' + json2html.convert(template)
+    template_id = session['templateId']
+    device_id = session['edge']
+    variables = request.form
+    # Get device variable values from vManage
+    vmanage = login()
+    payload = {
+        "templateId": template_id,
+        "deviceIds": [device_id],
+        "isEdited": False,
+        "isMasterEdited": False
+    }
+    template = vmanage.post_request('template/device/config/input', payload=payload)['data']
+    app.logger.debug(f"Get original device values")
+    vmanage.logout()
+
+    output = '<HTML><HEAD><BODY>\n<A HREF="/menu">Return to Main Menu.</A><BR><BR>\n'
+    output += f'Original Device Values From vManage:<BR>\n\n{json2html.convert(template)}\n\n'
 
     # Create template variables JSON object with new UUID
-    variables = request.form
     for value in variables:
-        template['device'][0][value] = variables[value]
+        template[0][value] = variables[value]
     payload = {"deviceTemplateList": [
-        template
-    ]
+        {
+            "templateId": template_id,
+            "device": template
+        }
+    ],
+        "isEdited": False,
+        "isMasterEdited": False,
+        "isDraftDisabled": False
     }
-    output += "<BR>New Template:<BR>" + json2html.convert(payload)
+    output += f'<BR>New Template Push Payload:<BR>\n\n{json2html.convert(payload)}\n\n'
+
+    app.logger.debug(f"Created template with new values\n{json.dumps(payload, indent=2)}")
 
     # Attach template to new edge
     vmanage = login()
     attach_job = vmanage.post_request('template/device/config/attachment', payload=payload)
-    output += '<br><b>Attach Template:</b><br>'
-    output += str(attach_job)
+    output += f'<br><b>Attach Template Job ID:</b> {attach_job["id"]}<br><br>\n'
+    app.logger.debug(f'Pushed new values to vManage. Monitoring job {attach_job["id"]}')
     output += action_status(vmanage, attach_job['id'])
     vmanage.logout()
 
-    output += '<br><br><a href="/menu">Return to main menu</a>'
+    output += '<br><br>\n<a href="/menu">Return to main menu</a>'
 
     return Markup(output)
 
@@ -565,6 +586,7 @@ def device_template():
     # Get template ID from args, session or vManage
     try:
         device_id = request.args.get('edge') or session['edge']
+        session['edge'] = device_id
     except KeyError:
         device_id = ''
     try:
@@ -573,6 +595,7 @@ def device_template():
         vmanage = login()
         response = vmanage.get_request(f'system/device/vedges?uuid={device_id}')
         template_id = response['data'][0]['templateId']
+        session['templateId'] = template_id
         vmanage.logout()
 
     my_db = MyDb(session['orgId'])
