@@ -94,7 +94,7 @@ def menu():
         resp = make_response(redirect(url_for('menu')))
         form = request.form
         for arg in form:
-            resp.set_cookie(arg, form[arg], secure=True, httponly=True)
+            resp.set_cookie(arg, form[arg], secure=False, httponly=True)
         return resp
 
     # Clear user session variables from previous tasks
