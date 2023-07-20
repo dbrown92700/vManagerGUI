@@ -218,7 +218,7 @@ def edit_template():
                      f'<td><input type=text value="{template_dict[prop["property"]][2]}" ' \
                      f'name="{prop["property"]}2"></td></tr>'
     table += f'</table>\n<input type=submit class="button"></form>\n' \
-             f'    <script type="text/javascript" language="JavaScript" src="static/device_template.js"></script>\n' \
+             f'    <script type="text/javascript" language="JavaScript" src="static/edit_template.js"></script>\n' \
              f'    <script src="https://d3js.org/d3.v3.js"></script>\n'
     instructions = Markup(f'<h2>Template Name {template_name}</h2>ID: {template_id}<br><br>\n'
                           f'<table>\n<tr><td>Save form as CSV File</td>'
