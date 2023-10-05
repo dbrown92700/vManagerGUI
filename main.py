@@ -591,6 +591,7 @@ def device_template():
         device_id = ''
     try:
         template_id = request.args.get('templateId') or session['templateId']
+        session['templateId'] = template_id
     except (IndexError, KeyError):
         vmanage = login()
         response = vmanage.get_request(f'system/device/vedges?uuid={device_id}')
@@ -599,7 +600,12 @@ def device_template():
         vmanage.logout()
 
     my_db = MyDb(session['orgId'])
-    template_dict = my_db.template_get(template_id)
+    # Pull template definition from database.
+    # If it doesn't exist redirect to edittemplate to create it.
+    try:
+        template_dict = my_db.template_get(template_id)
+    except pymysql.err.ProgrammingError:
+        return redirect(f'/edittemplate?templateId={template_id}')
     # If routed from edittemplate, read the updated fields from the POST:
     if request.method == 'POST':
         keys = []
@@ -735,8 +741,12 @@ def device_template():
     for category in editable_dict:
         editable += editable_dict[category]
         editable += f'</table></p></div>\n'
+    if device_id:
+        edge = device_id
+    else:
+        edge = Markup('None - <B>Do not try to submit this form.</B> Return to <A HREF="/menu">menu</A>.')
     return render_template('device_template.html', not_editable=Markup(not_editable),
-                           editable=Markup(editable), template_id=template_id)
+                           editable=Markup(editable), template_id=template_id, device_id=edge)
 
 
 if __name__ == '__main__':
